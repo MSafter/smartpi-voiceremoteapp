@@ -1,12 +1,17 @@
+//audio input
 var audioBuffer = [];
 var totalReceivedData = 0;
 var config = {};
-var NOTALKEDINTERVAL = 500;
-var startedTime;
-var lastUpdatedTime;
-var commandSet = false;
-var nextCommandLastUpdated;
-var nextCommandDelay = 3000;
+
+//detection
+var NOTALKEDINTERVAL = 500; //Interval how long the detecion should wait bevor send the command 
+var startedTime; // time in millis when user speaking is detected
+var currentTime; // current time in millis
+var commandSet = false; // is comamnd set 
+var nextCommandLastUpdated; // time in millis where the last command was send 
+var nextCommandDelay = 3000; // Delay how long command aren't allowed
+var detectionLevel = 7 // detection level of the voice
+
 var app = {
     // Application Constructor
     initialize: function () {
@@ -22,24 +27,24 @@ var app = {
     },
     onAudioInput: function (evt) {
         if (evt && evt.data) {
-            lastUpdatedTime = Date.now();
+            currentTime = Date.now();
 
             if (commandSet) {
-                if ((lastUpdatedTime - nextCommandLastUpdated) < nextCommandDelay) {
+                if ((currentTime - nextCommandLastUpdated) < nextCommandDelay) {
                     updateStatus('Lock', 'no userinput allowed due to delay', ['voice']);
                     return;
                 }
                 updateStatus('Service ready', 'listening for user input', ['voice']);
             }
 
-            if ((Math.round(Math.max.apply(null, evt.data) * 1000000000000000000) / 10000000000000000) > 5) {
+            if ((Math.round(Math.max.apply(null, evt.data) * 1000000000000000000) / 10000000000000000) > detectionLevel) {
                 updateStatus('Input', 'user is speaking...', ['voice']);
                 totalReceivedData += evt.data.length;
                 audioBuffer = audioBuffer.concat(evt.data);
                 startedTime = Date.now();
                 commandSet = false;
             } else {
-                if ((lastUpdatedTime - startedTime) > NOTALKEDINTERVAL && !commandSet) {
+                if ((currentTime - startedTime) > NOTALKEDINTERVAL && !commandSet) {
                     updateStatus('Command', 'preparing userinput for backend call', ['voice', 'backend']);
                     sendToBackend();
                     commandSet = true;
@@ -121,7 +126,7 @@ function sendToBackend() {
     //do the request
     $.ajax({
         type: 'POST',
-        url: 'http://192.168.178.172:8080/api/upload',
+        url: 'http://<you-pi-ip-here>:8080/api/upload',
         data: fd,
         processData: false,
         contentType: false,
